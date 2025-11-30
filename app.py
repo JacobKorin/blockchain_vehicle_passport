@@ -1,3 +1,4 @@
+# Importing necessary libraries and modules
 from flask import Flask, render_template, session, request, jsonify
 from argparse import ArgumentParser
 from blockchain import Blockchain, Transaction
@@ -5,6 +6,7 @@ from users import initialize_users, get_user, get_users_by_role, create_and_sign
 import secrets
 
 
+#initialize flask app
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
 
@@ -23,6 +25,7 @@ def mine_transaction(transaction):
     last_block = blockchain.get_last_block()
     blockchain.create_block(nonce=1, previous_hash=last_block.hash)
 
+#Defining all routes for web app
 @app.route('/')
 def index():
     """Home page / dashboard"""
@@ -53,6 +56,7 @@ def vehicle_accident():
 def vehicle_transfer():
     return render_template('vehicle_transfer.html')
 
+#vehcile lookup route. If vin is provided show details, else show list
 @app.route('/vehicles/')
 @app.route('/vehicles/<vin>')
 def vehicle_detail(vin=None):
@@ -67,8 +71,7 @@ def validate_chain():
     return render_template('validate.html')
 
 
-
-
+# get and post API endpoints definned below
 @app.route('/api/roles', methods=['GET'])
 def api_get_roles():
     """Get all available roles"""
@@ -309,11 +312,4 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--port', default=5001, type=int, help="port to listen to")
     args = parser.parse_args()
     port = args.port
-    
-    print("\n" + "=" * 60)
-    print("STARTING VEHICLE PASSPORT BLOCKCHAIN APPLICATION")
-    print("=" * 60)
-    print(f"Server running on http://127.0.0.1:{port}")
-    print("=" * 60 + "\n")
-    
     app.run(host='127.0.0.1', port=port, debug=True)
