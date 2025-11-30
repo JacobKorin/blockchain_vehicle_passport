@@ -1,11 +1,7 @@
 
-#User management for Vehicle Passport Blockchain
-
-#Handles users, roles, keypairs, and permissions
-
 from crypto_utils import generate_keypair, sign_transaction, verify_transaction_signature
 
-# representing a user in the system. has a role and keypair
+
 class User:
     
     def __init__(self, user_id, role, private_key, public_key):
@@ -28,16 +24,15 @@ ROLES = {
     'DMV': ['VEHICLE_CREATED', 'OWNERSHIP_TRANSFER'],
     'MECHANIC': ['MILEAGE_UPDATE', 'SERVICE_RECORD'],
     'INSURER': ['ACCIDENT_RECORD'],
-    'BUYER': [] 
+    'BUYER': []  # Read-only
 }
 
 
 # Global user registry
 USERS = {}
 
-#iniaitlizes predefined user set
+
 def initialize_users():
-    
     global USERS
     
     user_configs = [
@@ -73,7 +68,6 @@ def initialize_users():
 
 
 def get_user(user_id):
-
     return USERS.get(user_id)
 
 
@@ -101,6 +95,7 @@ def create_and_sign_transaction(user_id, vin, tx_type, payload):
     if not user:
         raise ValueError(f"User {user_id} not found")
     
+    # Check permissions
     if not can_user_create_transaction(user_id, tx_type):
         raise PermissionError(
             f"User {user_id} with role {user.role} cannot create {tx_type} transactions"
@@ -122,7 +117,7 @@ def create_and_sign_transaction(user_id, vin, tx_type, payload):
 
 
 def verify_transaction(transaction):
-    
+    # Get user
     user = get_user(transaction.actor_id)
     if not user:
         return False

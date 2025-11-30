@@ -1,30 +1,27 @@
 from flask import Flask, render_template, session, request, jsonify
 from argparse import ArgumentParser
 from blockchain import Blockchain, Transaction
-from users import initialize_users, get_user, get_users_by_role, create_and_sign_transaction, verify_transaction
+from users import initialize_users, get_user, get_users_by_role, create_and_sign_transaction, verify_transaction, ROLES
 import secrets
 
-# INITIALIZE FLASK APP
+
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
 
-# initialize blockchain and users
+
 blockchain = Blockchain()
 users = initialize_users()
 
-# define roles 
-ROLE_PERMISSIONS = {
-    'MANUFACTURER': ['VEHICLE_CREATED', 'OWNERSHIP_TRANSFER'],
-    'DMV': ['VEHICLE_CREATED', 'OWNERSHIP_TRANSFER'],
-    'MECHANIC': ['MILEAGE_UPDATE', 'SERVICE_RECORD'],
-    'INSURER': ['ACCIDENT_RECORD'],
-    'BUYER': []
-}
 
-AVAILABLE_ROLES = list(ROLE_PERMISSIONS.keys())
+AVAILABLE_ROLES = list(ROLES.keys())
 
 
-# html routes
+
+def mine_transaction(transaction):
+    """Helper to add transaction and mine block immediately"""
+    blockchain.add_transaction(transaction)
+    last_block = blockchain.get_last_block()
+    blockchain.create_block(nonce=1, previous_hash=last_block.hash)
 
 @app.route('/')
 def index():
@@ -70,7 +67,7 @@ def validate_chain():
     return render_template('validate.html')
 
 
-# api endpoints
+
 
 @app.route('/api/roles', methods=['GET'])
 def api_get_roles():
@@ -87,10 +84,21 @@ def api_get_users_by_role(role):
 
 @app.route('/api/session/set', methods=['POST'])
 def api_set_session():
-    """Set current role and user in session"""
+    """Set current role and user in session with validation"""
     data = request.get_json()
-    session['role'] = data.get('role')
-    session['user_id'] = data.get('user_id')
+    role = data.get('role')
+    user_id = data.get('user_id')
+    
+
+    user = get_user(user_id)
+    if not user:
+        return jsonify({'error': 'User ID not found'}), 400
+    
+    if user.role != role:
+        return jsonify({'error': f'User {user_id} does not have role {role}'}), 400
+
+    session['role'] = role
+    session['user_id'] = user_id
     return jsonify({'success': True})
 
 @app.route('/api/session/get', methods=['GET'])
@@ -149,7 +157,7 @@ def api_register_vehicle():
         return jsonify({'error': 'Not logged in'}), 401
     
     try:
-        # Create and sign transaction
+
         transaction = create_and_sign_transaction(
             user_id=user_id,
             vin=data['vin'],
@@ -163,10 +171,8 @@ def api_register_vehicle():
             }
         )
         
-        # Add to blockchain
-        blockchain.add_transaction(transaction)
-        last_block = blockchain.get_last_block()
-        blockchain.create_block(nonce=1, previous_hash=last_block.hash)
+
+        mine_transaction(transaction)
         
         return jsonify({'success': True, 'vin': data['vin']})
     
@@ -185,7 +191,7 @@ def api_update_mileage():
     vin = data['vin']
     new_mileage = int(data['new_mileage'])
     
-    # Check mileage validity
+
     last_mileage = blockchain.get_latest_mileage(vin)
     if last_mileage and new_mileage < last_mileage:
         return jsonify({'error': f'New mileage ({new_mileage}) cannot be less than last recorded mileage ({last_mileage})'}), 400
@@ -201,9 +207,7 @@ def api_update_mileage():
             }
         )
         
-        blockchain.add_transaction(transaction)
-        last_block = blockchain.get_last_block()
-        blockchain.create_block(nonce=1, previous_hash=last_block.hash)
+        mine_transaction(transaction)
         
         return jsonify({'success': True})
     
@@ -230,9 +234,7 @@ def api_add_service():
             }
         )
         
-        blockchain.add_transaction(transaction)
-        last_block = blockchain.get_last_block()
-        blockchain.create_block(nonce=1, previous_hash=last_block.hash)
+        mine_transaction(transaction)
         
         return jsonify({'success': True})
     
@@ -259,9 +261,7 @@ def api_add_accident():
             }
         )
         
-        blockchain.add_transaction(transaction)
-        last_block = blockchain.get_last_block()
-        blockchain.create_block(nonce=1, previous_hash=last_block.hash)
+        mine_transaction(transaction)
         
         return jsonify({'success': True})
     
@@ -287,9 +287,7 @@ def api_transfer_ownership():
             }
         )
         
-        blockchain.add_transaction(transaction)
-        last_block = blockchain.get_last_block()
-        blockchain.create_block(nonce=1, previous_hash=last_block.hash)
+        mine_transaction(transaction)
         
         return jsonify({'success': True})
     
@@ -311,4 +309,11 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--port', default=5001, type=int, help="port to listen to")
     args = parser.parse_args()
     port = args.port
+    
+    print("\n" + "=" * 60)
+    print("STARTING VEHICLE PASSPORT BLOCKCHAIN APPLICATION")
+    print("=" * 60)
+    print(f"Server running on http://127.0.0.1:{port}")
+    print("=" * 60 + "\n")
+    
     app.run(host='127.0.0.1', port=port, debug=True)

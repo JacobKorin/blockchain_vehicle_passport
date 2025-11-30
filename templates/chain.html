@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Blockchain Explorer - Vehicle Passport</title>
+
+    <link rel="stylesheet" href="/static/vendor/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/vendor/font-awesome/font-awesome.min.css">
+    <link rel="stylesheet" href="/static/css/custom.css">
+    <style>
+        .block-card {
+            border-left: 5px solid #007bff;
+            margin-bottom: 20px;
+        }
+        .hash-text {
+            font-family: monospace;
+            font-size: 0.85em;
+            word-break: break-all;
+        }
+        .tx-list {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container">
+            <a href="/" class="navbar-brand">Vehicle Passport</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item">
+                        <a href="/" class="nav-link">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/vehicles/register" class="nav-link">Register Vehicle</a>
+                    </li>
+                    <li class="nav-item active">
+                        <a href="/chain" class="nav-link">Blockchain</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/validate" class="nav-link">Validate</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card-body">
+                    <h4 class="card-title">Blockchain Explorer</h4>
+                    <p class="card-text">View the raw blocks and transactions stored on the chain.</p>
+                    <button id="refresh_btn" class="btn btn-primary btn-sm">Refresh Chain</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container" id="chain_container">
+        <div class="text-center">
+            <i class="fa fa-spinner fa-spin fa-3x"></i>
+            <p>Loading blockchain...</p>
+        </div>
+    </div>
+
+    <script src="/static/vendor/jquery/jquery.min.js"></script>
+    <script src="/static/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        $(function() {
+            loadChain();
+
+            $('#refresh_btn').click(function() {
+                loadChain();
+            });
+
+            function loadChain() {
+                $.ajax({
+                    url: '/api/chain',
+                    type: 'GET',
+                    success: function(response) {
+                        displayChain(response.chain);
+                    },
+                    error: function() {
+                        $('#chain_container').html('<div class="alert alert-danger">Failed to load blockchain data.</div>');
+                    }
+                });
+            }
+
+            function displayChain(chain) {
+                const container = $('#chain_container');
+                container.empty();
+
+                if (chain.length === 0) {
+                    container.html('<div class="alert alert-warning">Blockchain is empty.</div>');
+                    return;
+                }
+
+                // Loop through chain (reverse order to show newest first)
+                for (let i = chain.length - 1; i >= 0; i--) {
+                    const block = chain[i];
+                    const date = new Date(block.timestamp * 1000).toLocaleString();
+                    
+                    let transactionsHtml = '';
+                    if (block.transactions.length === 0) {
+                        transactionsHtml = '<em class="text-muted">No transactions (System Block)</em>';
+                    } else {
+                        transactionsHtml = '<ul class="list-group list-group-flush">';
+                        block.transactions.forEach(tx => {
+                            transactionsHtml += `
+                                <li class="list-group-item">
+                                    <span class="badge badge-info">${tx.type}</span>
+                                    <small><strong>VIN:</strong> ${tx.vin}</small><br>
+                                    <small><strong>Actor:</strong> ${tx.actor_id} (${tx.role})</small>
+                                </li>
+                            `;
+                        });
+                        transactionsHtml += '</ul>';
+                    }
+
+                    const blockHtml = `
+                        <div class="card block-card shadow-sm">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <strong>Block #${block.block_number}</strong>
+                                <small class="text-muted">${date}</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p><strong>Hash:</strong><br> <span class="hash-text text-primary">${block.hash}</span></p>
+                                        <p><strong>Previous Hash:</strong><br> <span class="hash-text text-secondary">${block.previous_hash}</span></p>
+                                        <p><strong>Nonce:</strong> ${block.nonce}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Transactions (${block.transactions.length})</h6>
+                                        <div class="tx-list">
+                                            ${transactionsHtml}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.append(blockHtml);
+                }
+            }
+        });
+    </script>
+
+</body>
+</html>
