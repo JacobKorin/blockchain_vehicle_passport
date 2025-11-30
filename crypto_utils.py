@@ -27,6 +27,7 @@ def verify_transaction_signature(transaction, public_key_hex):
     if not transaction.signature or not transaction.tx_id:
         return False
     
+    #try except block to catch unexpected errors and return False instead of crashing
     try:
         public_key = RSA.importKey(binascii.unhexlify(public_key_hex))
         verifier = PKCS1_v1_5.new(public_key)

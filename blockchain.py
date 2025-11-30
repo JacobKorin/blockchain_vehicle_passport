@@ -9,7 +9,7 @@ class Transaction:
     Represents a vehicle passport transaction.
     Types: VEHICLE_CREATED, MILEAGE_UPDATE, SERVICE_RECORD, ACCIDENT_RECORD, OWNERSHIP_TRANSFER
     
-    This is primarily a data object. Signing is handled externally via crypto_utils or users.py
+    This is primarily a data object. Signing is handled using functions from other modules
     """
     
     def __init__(self, vin, tx_type, actor_id, role, payload):

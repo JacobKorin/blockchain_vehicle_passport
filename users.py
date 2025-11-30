@@ -1,4 +1,7 @@
 
+'''
+This module defines users, permissions
+'''
 from crypto_utils import generate_keypair, sign_transaction, verify_transaction_signature
 
 
